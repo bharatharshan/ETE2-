@@ -1,6 +1,0 @@
-streamlit
-Pillow
-opencv-python
-numpy
-requests
-python-unsplash
