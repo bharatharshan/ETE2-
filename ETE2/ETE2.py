@@ -161,19 +161,25 @@ def delete_work(original_file, edited_file):
         print(f"Error deleting files: {e}")
         return False
 
-def get_image_comparison_html(original_path, edited_path, author_name="John Doe", file_id=None):
+def get_image_comparison_html(original_img, edited_img, author_name="John Doe", file_id=None):
+    """Generate HTML for image comparison using PIL Image objects directly."""
+    def image_to_base64(img):
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        return base64.b64encode(buffered.getvalue()).decode()
+    
     return f"""
     <div class="image-comparison-container">
         <div class="image-column">
             <div class="image-wrapper">
-                <img src="data:image/png;base64,{base64.b64encode(open(original_path, 'rb').read()).decode()}" 
+                <img src="data:image/png;base64,{image_to_base64(original_img)}" 
                      class="comparison-image">
             </div>
             <div class="image-caption">Original Image</div>
         </div>
         <div class="image-column">
             <div class="image-wrapper">
-                <img src="data:image/png;base64,{base64.b64encode(open(edited_path, 'rb').read()).decode()}" 
+                <img src="data:image/png;base64,{image_to_base64(edited_img)}" 
                      class="comparison-image">
             </div>
             <div class="image-caption">Edited Image</div>
@@ -325,22 +331,12 @@ def home_page():
                                     sharpness=1.1,
                                     saturation=1.1)
             
-            # Save temporarily
-            temp_original = f"temp_original_{i}.png"
-            temp_edited = f"temp_edited_{i}.png"
-            img.save(temp_original)
-            edited_img.save(temp_edited)
-            
-            # Display the comparison
+            # Display the comparison directly using PIL Image objects
             st.markdown(get_image_comparison_html(
-                temp_original, 
-                temp_edited,
+                img, 
+                edited_img,
                 title
             ), unsafe_allow_html=True)
-            
-            # Clean up temporary files
-            os.remove(temp_original)
-            os.remove(temp_edited)
             
         except Exception as e:
             st.warning(f"Could not load image {i}. Please try refreshing the page.")
@@ -752,24 +748,32 @@ def your_works_page():
         
         # Display each pair of images with delete button
         for i in range(len(original_files)):
-            # Display images
-            st.markdown(get_image_comparison_html(
-                f"user_works/{original_files[i]}", 
-                f"user_works/{edited_files[i]}"
-            ), unsafe_allow_html=True)
-            
-            # Add delete button
-            col1, col2, col3 = st.columns([1, 1, 1])
-            with col2:
-                if st.button("🗑️ Delete", key=f"delete_{i}", type="primary"):
-                    if delete_work(original_files[i], edited_files[i]):
-                        st.success("Images deleted successfully!")
-                        st.rerun()
-                    else:
-                        st.error("Error deleting images. Please try again.")
-            
-            # Add separator
-            st.markdown("<hr style='border: 1px solid rgba(26, 174, 130, 0.3); margin: 30px 0;'>", unsafe_allow_html=True)
+            try:
+                # Load images directly
+                original_img = Image.open(f"user_works/{original_files[i]}")
+                edited_img = Image.open(f"user_works/{edited_files[i]}")
+                
+                # Display images using PIL Image objects
+                st.markdown(get_image_comparison_html(
+                    original_img, 
+                    edited_img
+                ), unsafe_allow_html=True)
+                
+                # Add delete button
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col2:
+                    if st.button("🗑️ Delete", key=f"delete_{i}", type="primary"):
+                        if delete_work(original_files[i], edited_files[i]):
+                            st.success("Images deleted successfully!")
+                            st.rerun()
+                        else:
+                            st.error("Error deleting images. Please try again.")
+                
+                # Add separator
+                st.markdown("<hr style='border: 1px solid rgba(26, 174, 130, 0.3); margin: 30px 0;'>", unsafe_allow_html=True)
+            except Exception as e:
+                st.warning(f"Could not load image pair {i}. Please try refreshing the page.")
+                continue
     else:
         st.write("No works saved yet. Start editing images in the Create page!")
 
