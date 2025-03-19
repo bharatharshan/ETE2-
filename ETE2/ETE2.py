@@ -1,7 +1,6 @@
 import streamlit as st
-import cv2
 import numpy as np
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
 import base64
 import os
 from datetime import datetime
@@ -36,40 +35,121 @@ def load_image(image_file):
     return img
 
 def apply_filters(image, brightness=1.0, contrast=1.0, exposure=1.0, blur=0, sharpness=1.0, noise=0, hue=0, saturation=1.0, value=1.0):
-    image = np.array(image)
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    """Apply filters using PIL instead of OpenCV."""
+    # Convert PIL Image to numpy array
+    img_array = np.array(image)
     
     # Apply brightness, contrast, and exposure
-    image = cv2.convertScaleAbs(image, alpha=contrast, beta=(brightness - 1.0) * 100)
-    image = cv2.convertScaleAbs(image, alpha=exposure, beta=0)
+    img = Image.fromarray(img_array)
+    img = ImageEnhance.Brightness(img).enhance(brightness)
+    img = ImageEnhance.Contrast(img).enhance(contrast)
     
     # Apply blur
     if blur > 0:
-        image = cv2.GaussianBlur(image, (blur * 2 + 1, blur * 2 + 1), 0)
+        img = img.filter(ImageFilter.GaussianBlur(radius=blur))
     
-    # Apply sharpening
+    # Apply sharpness
     if sharpness > 1.0:
-        kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-        image = cv2.filter2D(image, -1, kernel * sharpness)
+        img = ImageEnhance.Sharpness(img).enhance(sharpness)
     
     # Apply noise
     if noise > 0:
-        noise_matrix = np.random.normal(0, noise, image.shape).astype(np.uint8)
-        image = cv2.add(image, noise_matrix)
+        noise_array = np.random.normal(0, noise, img_array.shape).astype(np.uint8)
+        img_array = np.clip(img_array + noise_array, 0, 255)
+        img = Image.fromarray(img_array)
     
-    # Convert to HSV and adjust Hue, Saturation, and Value
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(hsv)
-    h = cv2.add(h, hue)
-    h = np.clip(h, 0, 179)  # Ensure hue is within range
-    s = cv2.multiply(s.astype(np.float32), saturation)
-    s = np.clip(s, 0, 255).astype(np.uint8)
-    v = cv2.multiply(v.astype(np.float32), value)
-    v = np.clip(v, 0, 255).astype(np.uint8)
-    hsv = cv2.merge([h, s, v])
-    image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    # Apply color adjustments
+    img = ImageEnhance.Color(img).enhance(saturation)
     
-    return Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    # Convert to HSV-like color space and adjust hue
+    if hue != 0:
+        img_array = np.array(img)
+        hsv = rgb_to_hsv(img_array)
+        hsv[:, :, 0] = (hsv[:, :, 0] + hue/180) % 1.0
+        img_array = hsv_to_rgb(hsv)
+        img = Image.fromarray(img_array.astype(np.uint8))
+    
+    # Apply value (brightness in HSV)
+    if value != 1.0:
+        img_array = np.array(img)
+        hsv = rgb_to_hsv(img_array)
+        hsv[:, :, 2] = np.clip(hsv[:, :, 2] * value, 0, 1)
+        img_array = hsv_to_rgb(hsv)
+        img = Image.fromarray(img_array.astype(np.uint8))
+    
+    return img
+
+def rgb_to_hsv(rgb):
+    """Convert RGB to HSV color space."""
+    rgb = rgb.astype(np.float32) / 255.0
+    r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+    
+    max_rgb = np.maximum(np.maximum(r, g), b)
+    min_rgb = np.minimum(np.minimum(r, g), b)
+    diff = max_rgb - min_rgb
+    
+    h = np.zeros_like(r)
+    s = np.zeros_like(r)
+    v = max_rgb
+    
+    # Calculate hue
+    mask = diff != 0
+    h[mask] = np.where(max_rgb[mask] == r[mask],
+                      (60 * ((g[mask] - b[mask]) / diff[mask]) + 360) % 360,
+                      np.where(max_rgb[mask] == g[mask],
+                              (60 * ((b[mask] - r[mask]) / diff[mask]) + 120) % 360,
+                              (60 * ((r[mask] - g[mask]) / diff[mask]) + 240) % 360))
+    
+    # Calculate saturation
+    s = np.where(max_rgb != 0, diff / max_rgb, 0)
+    
+    return np.stack([h/360, s, v], axis=-1)
+
+def hsv_to_rgb(hsv):
+    """Convert HSV to RGB color space."""
+    h, s, v = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
+    h = h * 360
+    
+    c = v * s
+    x = c * (1 - np.abs((h / 60) % 2 - 1))
+    m = v - c
+    r = np.zeros_like(h)
+    g = np.zeros_like(h)
+    b = np.zeros_like(h)
+    
+    mask = (h >= 0) & (h < 60)
+    r[mask] = c[mask]
+    g[mask] = x[mask]
+    b[mask] = 0
+    
+    mask = (h >= 60) & (h < 120)
+    r[mask] = x[mask]
+    g[mask] = c[mask]
+    b[mask] = 0
+    
+    mask = (h >= 120) & (h < 180)
+    r[mask] = 0
+    g[mask] = c[mask]
+    b[mask] = x[mask]
+    
+    mask = (h >= 180) & (h < 240)
+    r[mask] = 0
+    g[mask] = x[mask]
+    b[mask] = c[mask]
+    
+    mask = (h >= 240) & (h < 300)
+    r[mask] = x[mask]
+    g[mask] = 0
+    b[mask] = c[mask]
+    
+    mask = (h >= 300) & (h < 360)
+    r[mask] = c[mask]
+    g[mask] = 0
+    b[mask] = x[mask]
+    
+    rgb = np.stack([r, g, b], axis=-1)
+    rgb = (rgb + m[:, :, np.newaxis]) * 255
+    return np.clip(rgb, 0, 255)
 
 def delete_work(original_file, edited_file):
     """Delete a pair of original and edited images."""
