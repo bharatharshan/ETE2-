@@ -7,16 +7,9 @@ import os
 from datetime import datetime
 import requests
 from io import BytesIO
-from unsplash.api import Api
-from unsplash.auth import Auth
 
 # Add Unsplash API credentials
 UNSPLASH_ACCESS_KEY = "BY4XWv6ftfctGaEYU86fUs-RI1Kyfunpxj9mR2g4JAo"
-UNSPLASH_SECRET_KEY = "UvSUX0AMVM_h_GJAV5hHNOlENDsXyUH1RFljM-5GFvI"  # Replace with your Secret Key
-REDIRECT_URI = "http://localhost:8501"  # Streamlit's default local URL
-
-auth = Auth(UNSPLASH_ACCESS_KEY, UNSPLASH_SECRET_KEY, REDIRECT_URI)
-api = Api(auth)
 
 def search_unsplash_images(query, per_page=10):
     """Search for images on Unsplash."""
@@ -413,7 +406,6 @@ def editor_page():
                                 if image:
                                     st.session_state.current_image = image
                                     st.session_state.image_source = "search"
-                                    st.session_state.scroll_to_editor = True
                                     st.rerun()
             else:
                 st.warning("No images found. Try a different search term.")
@@ -428,10 +420,6 @@ def editor_page():
     image = None
     if 'current_image' in st.session_state and st.session_state.image_source == "search":
         image = st.session_state.current_image
-        # Add a container for the editor section
-        editor_container = st.container()
-        with editor_container:
-            st.markdown("<div id='editor-section'></div>", unsafe_allow_html=True)
     elif uploaded_file is not None:
         image = load_image(uploaded_file)
         st.session_state.image_source = "upload"
@@ -450,17 +438,6 @@ def editor_page():
                 'saturation': 1.0,
                 'value': 1.0
             }
-        
-        # Add JavaScript for auto-scrolling
-        if st.session_state.get('scroll_to_editor', False):
-            st.markdown("""
-                <script>
-                    window.onload = function() {
-                        document.getElementById('editor-section').scrollIntoView({ behavior: 'smooth' });
-                    }
-                </script>
-            """, unsafe_allow_html=True)
-            st.session_state.scroll_to_editor = False
         
         # Display original and edited images
         col1, col2 = st.columns(2)
