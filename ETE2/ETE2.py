@@ -220,78 +220,6 @@ def home_page():
                 color: #FFFFFF !important;
                 font-family: 'Helvetica Neue', sans-serif;
             }
-            .image-comparison-container {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 40px;
-                width: 100%;
-                gap: 30px;
-                background-color: rgba(128, 128, 128, 0.05);
-                padding: 20px;
-                border-radius: 15px;
-                border: 1px solid rgba(128, 128, 128, 0.2);
-            }
-            .image-column {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-            }
-            .image-wrapper {
-                position: relative;
-                width: 100%;
-                padding-top: 100%;
-                overflow: hidden;
-                margin-bottom: 15px;
-                border-radius: 10px;
-                box-shadow: 0 4px 8px rgba(26, 174, 130, 0.8);
-            }
-            .comparison-image {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                transition: transform 0.3s ease;
-            }
-            .image-wrapper:hover .comparison-image {
-                transform: scale(1.05);
-            }
-            .image-caption {
-                color: #808080;
-                font-size: 1.2em;
-                margin-bottom: 8px;
-                font-weight: 500;
-            }
-            .author-name {
-                color: #808080;
-                font-size: 1.3em;
-                font-weight: 600;
-                margin: 15px 0;
-                padding: 5px 15px;
-                background-color: rgba(128, 128, 128, 0.1);
-                border-radius: 20px;
-            }
-            .like-button {
-                background: rgba(128, 128, 128, 0.2);
-                border: 2px solid #808080;
-                color: #808080;
-                padding: 10px 20px;
-                border-radius: 25px;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                margin-top: 10px;
-                font-weight: 500;
-            }
-            .like-button:hover {
-                background: rgba(0, 255, 0, 0.4);
-                transform: translateY(-2px);
-            }
-            .like-button.liked {
-                background: #00ff00;
-                color: #000000;
-            }
         </style>
     """, unsafe_allow_html=True)
     
@@ -305,42 +233,21 @@ def home_page():
         </div>
     """, unsafe_allow_html=True)
     
-    st.subheader("Works Done in Lightroom")
-    
-    # Use placeholder images from Unsplash for the homepage
-    placeholder_images = [
-        ("https://images.unsplash.com/photo-1506744038136-46273834b3fb", "Nature Photography"),
-        ("https://images.unsplash.com/photo-1516035069371-29a1b244cc32", "Portrait Photography"),
-        ("https://images.unsplash.com/photo-1492691527719-9d1e07e534b4", "Street Photography"),
-        ("https://images.unsplash.com/photo-1501785888041-af3ef285b470", "Landscape Photography"),
-        ("https://images.unsplash.com/photo-1511379938547-c1f69419868d", "Architecture Photography"),
-        ("https://images.unsplash.com/photo-1516035069371-29a1b244cc32", "Fashion Photography")
-    ]
-    
-    # Display each pair of images
-    for i, (url, title) in enumerate(placeholder_images, 1):
-        try:
-            # Load the image from URL
-            response = requests.get(url)
-            img = Image.open(BytesIO(response.content))
-            
-            # Create a slightly edited version for comparison
-            edited_img = apply_filters(img, 
-                                    brightness=1.1,
-                                    contrast=1.1,
-                                    sharpness=1.1,
-                                    saturation=1.1)
-            
-            # Display the comparison directly using PIL Image objects
-            st.markdown(get_image_comparison_html(
-                img, 
-                edited_img,
-                title
-            ), unsafe_allow_html=True)
-            
-        except Exception as e:
-            st.warning(f"Could not load image {i}. Please try refreshing the page.")
-            continue
+    # Add a call-to-action button
+    st.markdown("""
+        <div style='text-align: center; margin-top: 30px;'>
+            <a href='?page=Create' style='
+                background-color: rgba(26, 174, 130, 0.8);
+                color: #000000;
+                padding: 15px 30px;
+                border-radius: 25px;
+                text-decoration: none;
+                font-weight: 600;
+                display: inline-block;
+                transition: all 0.3s ease;
+            '>Start Editing Now</a>
+        </div>
+    """, unsafe_allow_html=True)
 
 def load_image_from_url(url):
     """Load an image from a URL."""
