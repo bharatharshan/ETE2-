@@ -301,13 +301,50 @@ def home_page():
     
     st.subheader("Works Done in Lightroom")
     
+    # Use placeholder images from Unsplash for the homepage
+    placeholder_images = [
+        ("https://images.unsplash.com/photo-1506744038136-46273834b3fb", "Nature Photography"),
+        ("https://images.unsplash.com/photo-1516035069371-29a1b244cc32", "Portrait Photography"),
+        ("https://images.unsplash.com/photo-1492691527719-9d1e07e534b4", "Street Photography"),
+        ("https://images.unsplash.com/photo-1501785888041-af3ef285b470", "Landscape Photography"),
+        ("https://images.unsplash.com/photo-1511379938547-c1f69419868d", "Architecture Photography"),
+        ("https://images.unsplash.com/photo-1516035069371-29a1b244cc32", "Fashion Photography")
+    ]
+    
     # Display each pair of images
-    for i in range(1, 7):
-        st.markdown(get_image_comparison_html(
-            f"original{i}.jpg", 
-            f"edited{i}.jpg",
-            f"Photographer {i}"
-        ), unsafe_allow_html=True)
+    for i, (url, title) in enumerate(placeholder_images, 1):
+        try:
+            # Load the image from URL
+            response = requests.get(url)
+            img = Image.open(BytesIO(response.content))
+            
+            # Create a slightly edited version for comparison
+            edited_img = apply_filters(img, 
+                                    brightness=1.1,
+                                    contrast=1.1,
+                                    sharpness=1.1,
+                                    saturation=1.1)
+            
+            # Save temporarily
+            temp_original = f"temp_original_{i}.png"
+            temp_edited = f"temp_edited_{i}.png"
+            img.save(temp_original)
+            edited_img.save(temp_edited)
+            
+            # Display the comparison
+            st.markdown(get_image_comparison_html(
+                temp_original, 
+                temp_edited,
+                title
+            ), unsafe_allow_html=True)
+            
+            # Clean up temporary files
+            os.remove(temp_original)
+            os.remove(temp_edited)
+            
+        except Exception as e:
+            st.warning(f"Could not load image {i}. Please try refreshing the page.")
+            continue
 
 def load_image_from_url(url):
     """Load an image from a URL."""
